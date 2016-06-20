@@ -2,6 +2,13 @@
 
 	class TestTimberHelper extends Timber_UnitTestCase {
 
+		function testCommentFormPHP() {
+			$post_id = $this->factory->post->create();
+			$form = TimberHelper::get_comment_form($post_id);
+			$form = trim($form);
+			$this->assertStringStartsWith('<div id="respond"', $form);
+		}
+
 		function testCloseTagsWithSelfClosingTags(){
 			$p = '<p>My thing is this <hr>Whatever';
 			$html = TimberHelper::close_tags($p);
@@ -10,7 +17,7 @@
 
 		function testCommentForm() {
 			$post_id = $this->factory->post->create();
-			$form = TimberHelper::get_comment_form($post_id);
+			$form = TimberHelper::ob_function( 'comment_form', array( array(), $post_id ) );
 			$form = trim($form);
 			$this->assertStringStartsWith('<div id="respond"', $form);
 		}
@@ -31,7 +38,7 @@
         	$this->assertEquals('My New Post', TimberHelper::get_wp_title());
         }
 
-		function testCloseTags(){
+		function testCloseTags() {
 			$str = '<a href="http://wordpress.org">Hi!';
 			$closed = TimberHelper::close_tags($str);
 			$this->assertEquals($str.'</a>', $closed);

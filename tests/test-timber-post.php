@@ -5,7 +5,7 @@
 		function testPostObject(){
 			$post_id = $this->factory->post->create();
 			$post = new TimberPost($post_id);
-			$this->assertEquals('TimberPost', get_class($post));
+			$this->assertEquals('Timber\Post', get_class($post));
 			$this->assertEquals($post_id, $post->ID);
 		}
 
@@ -88,7 +88,10 @@
 		function testNonexistentMethod(){
 			$post_id = $this->factory->post->create();
 			$post = new TimberPost( $post_id );
-			$this->assertFalse( $post->donkey() );
+			$template = '{{post.donkey}}';
+			$str = Timber::compile_string($template, array('post' => $post));
+			$this->assertEquals('', $str);
+			//$this->assertFalse( $post->donkey() );
 		}
 
 		function testNext(){
@@ -277,6 +280,44 @@
 			$_GET['preview_nonce'] = wp_create_nonce('post_preview_' . $post_id);
 			$post = new TimberPost();
 			$this->assertEquals( $quote . 'Yes', $post->post_content );
+		}
+
+		function testMultiPreviewRevisions(){
+			global $current_user;
+			global $wp_query;
+
+			$quote = 'The way to do well is to do well.';
+			$post_id = $this->factory->post->create(array(
+				'post_content' => $quote,
+				'post_author' => 5
+			));
+			$old_revision_id = $this->factory->post->create(array(
+				'post_type' => 'revision',
+				'post_status' => 'inherit',
+				'post_parent' => $post_id,
+				'post_content' => $quote . 'Yes'
+			));
+
+			$revision_id = $this->factory->post->create(array(
+				'post_type' => 'revision',
+				'post_status' => 'inherit',
+				'post_parent' => $post_id,
+				'post_content' => 'I am the one'
+			));
+
+			$uid = $this->factory->user->create(array(
+				'user_login' => 'timber',
+				'user_pass' => 'timber',
+			));
+			$user = wp_set_current_user($uid);
+
+			$user->add_role('administrator');
+			$wp_query->queried_object_id = $post_id;
+			$wp_query->queried_object = get_post($post_id);
+			$_GET['preview'] = true;
+			$_GET['preview_nonce'] = wp_create_nonce('post_preview_' . $post_id);
+			$post = new TimberPost();
+			$this->assertEquals('I am the one', $post->post_content);
 		}
 
 		function testContent(){
@@ -471,7 +512,7 @@
 			update_option('permalink_structure', $struc);
 			$pid = $this->factory->post->create(array('post_date' => '2014-05-28'));
 			$post = new TimberPost($pid);
-			$this->assertStringStartsWith('http://example.org/blog/2014/05/post-title', $post->permalink());
+			$this->assertStringStartsWith('http://example.org/blog/2014/05/post-title', $post->link());
 			$this->assertStringStartsWith('/blog/2014/05/post-title', $post->path());
 		}
 
@@ -587,6 +628,13 @@
 			$post = new TimberPost($pid);
 			$this->assertEquals($pid, $post->ID);
 			$this->assertEquals('My Page', $post->title());
+		}
+
+		function testCommentFormOnPost() {
+			$post_id = $this->factory->post->create();
+			$post = new Timber\Post($post_id);
+			$form = $post->comment_form();
+			$this->assertStringStartsWith('<div id="respond"', trim($form));
 		}
 
 		/**
